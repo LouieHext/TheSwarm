@@ -98,7 +98,7 @@ float getSensedValueFood(vec2 pos) {
     for (int i = -sensorSize; i <= sensorSize; i++) {							   //kernel loop
       for (int j = -sensorSize; j <= sensorSize; j++) {
 		int idx=int(pos.x) + i + (int(pos.y) + j) * W;							   //2D -> 1D
-        value += pheremonesFood[idx]+max(food[idx],0)*foodDesire+min(0,food[idx]); //negative are walls, split up to use food desire
+        value += pheremonesFood[idx]+max(food[idx],0)*foodDesire+min(0,food[idx]) + food[idx+3*W*H]; //negative are walls, split up to use food desire
       }
     }
     return value;
@@ -112,7 +112,7 @@ float getSensedValueNest(vec2 pos) {
     for (int i = -sensorSize; i <= sensorSize; i++) {						      //kernel loop
       for (int j = -sensorSize; j <= sensorSize; j++) {
 		int idx=int(pos.x) + i + (int(pos.y) + j) * W;							  //2D -> 1D
-        value += pheremonesNest[idx]+min(0,food[idx]) + food[idx+W*H]*foodDesire; //negative are walls, split up to use food desire
+        value += pheremonesNest[idx]+min(0,food[idx]) + food[idx+W*H]*foodDesire+food[idx+3*W*H]; //negative are walls, split up to use food desire
       }
     }
     return value;
@@ -140,7 +140,10 @@ float updateHeading(Particle particle) {
 		senseRight = getSensedValueFood(getSensedRegion(particle,-sensorAngle));
 	}
 
-
+//	if (particle.time>1.5*60 && rand(vec2(particle.pos.y,time))>0.95){
+//		return particle.heading+(1.5+particle.time*0.02)*turningSpeed*(-0.5+rand(vec2(particle.pos.y,time)) );				   //adding large random to heading
+//	}
+//
 	//moving right
     if (senseRight > max(senseLeft, senseForward)) {													//if right is the highest
       return particle.heading-turningSpeed+0.03*turningSpeed*(-0.5+rand(vec2(particle.pos.y,time)) );   //decreasing heading with some randomness
@@ -155,8 +158,8 @@ float updateHeading(Particle particle) {
 	}
 	//if forward best add random
 	//big random
-	else if (rand(vec2(particle.pos.x,time))>0.9)  {
-	  return particle.heading+1.5*turningSpeed*(-0.5+rand(vec2(particle.pos.y,time)) );				   //adding large random to heading
+	else if (rand(vec2(particle.pos.x,time))>0.9-particle.time*0.025)  {
+	  return particle.heading+(1.5+particle.time*0.02)*turningSpeed*(-0.5+rand(vec2(particle.pos.y,time)) );				   //adding large random to heading
 	}
 	//small random
 	else {
@@ -197,7 +200,13 @@ bool updateState(Particle particle){
 	}										 
 	else{									 //if the particle has no food 
 		if (food[idx]>0){					 //and is in the food
-			food[idx] = max(0,food[idx]-5);  //"pickup" the food
+			for(int ii=-1;ii<=1;ii++){
+				for(int jj=-1;jj<=1;jj++){
+					int idx = int(particle.pos.x)+ii+(int(particle.pos.y)+jj)*W;
+					food[idx] = max(0,food[idx]-5);  //"pickup" the food
+					
+				}
+			}
 			return true;					 //and change to state "food"
 		}
 		return false;						 //if not on food do nothing
@@ -217,6 +226,8 @@ vec2 boundaryCheck(vec2 pos) {
 void main(){
 
 	Particle particle = p[gl_GlobalInvocationID.x]; 			//loading in particle
+
+//	if (particle.time<35*0.1*30){
 	particle.heading=updateHeading(particle);					//updating heading
 
     vec2 tempPos=updatePos(particle); 							//updating position
@@ -229,8 +240,8 @@ void main(){
 
 	if (tempState!=particle.food){								//if particle state has changed,
 		particle.heading+=3.14*(0.8+0.5*rand(vec2(particle.pos.x,time)));  //turn the particle around
-		particle.time=1.0;										//reset the time
-		food[3*W*H+1]+=1.0;
+		particle.time=0.0;										//reset the time
+//		food[3*W*H+1]+=1.0;
 	}
 
 	int idx=int(particle.pos.x) + int(particle.pos.y) * W;		//translate new position to index
@@ -247,10 +258,10 @@ void main(){
 	//update pheromone maps based on the current state
 	//the more recently an ant has reached a nest or food source, the strong the pheromone deposit
 	if ( particle.food){  //if has food add to "toFood" map
-		pheremonesFood[int(particle.pos.x) + int(particle.pos.y) * W]+=max(0.1,5.0/(particle.time*0.1*512.0/W));  //hacky map based on time and resolution 
+		pheremonesFood[int(particle.pos.x) + int(particle.pos.y) * W]+=max(0.1,5.0/((particle.time+1.0)*0.1*512.0/W));  //hacky map based on time and resolution 
 	}
 	else{ //if doesnt have food add to "toNest" map
-		pheremonesNest[int(particle.pos.x) + int(particle.pos.y) * W]+=max(0.1,5.0/(particle.time*0.1*512.0/W));
+		pheremonesNest[int(particle.pos.x) + int(particle.pos.y) * W]+=max(0.1,5.0/((particle.time+1.0)*0.1*512.0/W));
 	}
 
 	//adding particle position to final layer of the food so they can be displayed
@@ -259,6 +270,7 @@ void main(){
 	//updating particle array
 	p[gl_GlobalInvocationID.x]=  particle;
 
+//}
 }
 
 

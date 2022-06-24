@@ -23,6 +23,7 @@ class ofApp : public ofBaseApp{
 		void generateMap();
 
 		//updates
+		void updateMap();
 		void updateAnts();
 		void updatePheromones();
 
@@ -50,7 +51,7 @@ class ofApp : public ofBaseApp{
 		ofBufferObject pheremonesToFood, pheremonesToNest, pheremonesToFoodBack, pheremonesToNestBack, pheremonesClear,antPos;
 		ofBufferObject	foodBuffer,foodBufferBack,foodBufferCopy,foodBufferClear;
 		float pheremonesCPU[W*H];
-		float foodCPU[W*H*3], foodCPUClear[W*H * 3];
+		float foodCPU[W*H*4], foodCPUClear[W*H * 4];
 
 		ofTexture display,displayAlt;
 

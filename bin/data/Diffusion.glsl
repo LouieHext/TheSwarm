@@ -47,7 +47,7 @@ float weights[9] = float[](		//diffusion weights
 //heler function that calculates the values that will be added
 //to a current pixel due to diffusion.
 //weights are used in a gaussian for more accurate diffusion (corners should recieve less)
-vec2 diffuseIDX(int i, int j){
+vec3 diffuseIDX(int i, int j){
 	float valueFood = 0;										 //storing food value											
 	int c = 0;													 //counter
 	for (int ii=-1;ii<=1;ii++){								
@@ -64,7 +64,15 @@ vec2 diffuseIDX(int i, int j){
 			c++;
 		}
 	}
-	return vec2(valueFood,valueNest);							 //returning values in vec2
+	float valueHeat = 0;										 //storing nest value	
+	c = 0;														 //resetting counter
+	for (int ii=-1;ii<=1;ii++){
+		for(int jj=-1;jj<=1;jj++){							     //kernel loop with gaussian weighted matrix
+			valueHeat+=food[i+ii+(j+jj)*W+3*W*H]*weights[c]; //adding diffused values from surroundings to current location
+			c++;
+		}
+	}
+	return vec3(valueFood,valueNest,valueHeat);							 //returning values in vec2
 }
 
 //===========================================================================
@@ -78,9 +86,11 @@ void main(){
 	//getting value infomation for the update					 
 	float origValueFood		= pheremonesFood[idx];				 //current value in primary buffer
 	float origValueNest		= pheremonesNest[idx];				 //current value in primary buffer
-	vec2 diffused			= diffuseIDX(i,j);					 //carry out diffusion into cell
+	float origValueHeat     = foodBack[idx+3*W*H];
+	vec3 diffused			= diffuseIDX(i,j);					 //carry out diffusion into cell
 	float diffusedValueFood = diffused.x;						
 	float diffusedValueNest = diffused.y;
+	float diffusedValueHeat = diffused.z;
 
 	//carryig out mixing of original and diffused values for food
 	pheremonesFoodBack[idx] = max(0,origValueFood * (1.0-diffusionWeight*0.1) + diffusedValueFood * diffusionWeight*0.1); //"""""""""this was not used previously!!!!!!!!!!""""""""""
@@ -92,10 +102,18 @@ void main(){
 	pheremonesNestBack[idx]*=(1.0-decayWeight*0.5);
 	float valueNest=pheremonesNestBack[idx];
 	
+	foodBack[idx+3*W*H] = origValueHeat * (1.0-diffusionWeight*0.1) + diffusedValueHeat * diffusionWeight*0.42;
+	foodBack[idx+3*W*H]*=(0.4);
+	if (foodBack[idx+3*W*H]>-0.1){
+		foodBack[idx+3*W*H]=0.0;
+	}
+	float valueHeat=foodBack[idx+3*W*H];
+	
 
 	//setting up colours
-	vec4 colFood = vec4(0,0,valueFood,0.5);						//food pheromones shown in blue
-	vec4 colNest = vec4(valueNest,0,0,0.8);						//nest pheromones shown in red
+	vec4 colFood = vec4(0,valueFood*0.9,valueFood*0.3,0.3);						//food pheromones shown in blue
+	vec4 colNest = vec4(valueNest*0.2,valueNest*0.1,valueNest*0.9,0.3);						//nest pheromones shown in red
+	vec4 colHeat = vec4(abs(valueHeat),0.2*abs(valueHeat),abs(valueHeat)*0.2,1.0);
 	vec4 colDetail;												//colour for showing map infomation
 
 	//conditionals to define colDetail
@@ -108,20 +126,23 @@ void main(){
 		 colFood=vec4(0.0,0.0,0.0,1.0);
 		 colNest=vec4(0.0,0.0,0.0,1.0);
 	}
-	if (food[idx]>10){											//if food, display in green 
+	if (food[idx]>1){											//if food, display in green 
 		colDetail = vec4(0,1.0,0,1.0);							//green
 	}
 	if (food[idx+W*H]>0){										//if its a nest (stored in a "deeper" layer, hence the + W*H)
 		colDetail = vec4(1.0,1.0,0.2,1.0);						//display in yellow
 	}
+
+	
+
 	if (food[idx]>=0 && food[idx+2*W*H]>0){														//if it is a particle show white
 		imageStore(pheremoneDisplay,ivec2(gl_GlobalInvocationID.xy),vec4(1.0,1.0,1.0,0.5));
-		imageStore(pheremoneDisplayAlt,ivec2(gl_GlobalInvocationID.xy),vec4(1.0,1.0,1.0,0.5));
+//		imageStore(pheremoneDisplayAlt,ivec2(gl_GlobalInvocationID.xy),vec4(1.0,1.0,1.0,0.5));
 
 	}
 	else{									//if a particle is not here show the combination of pheromones and map details
-		imageStore(pheremoneDisplay,ivec2(gl_GlobalInvocationID.xy),colDetail+colNest);
-		imageStore(pheremoneDisplayAlt,ivec2(gl_GlobalInvocationID.xy),colDetail+colFood);
+		imageStore(pheremoneDisplay,ivec2(gl_GlobalInvocationID.xy),colHeat+colFood+colDetail+colNest);
+//		imageStore(pheremoneDisplayAlt,ivec2(gl_GlobalInvocationID.xy),colHeat+colNest+colDetail);
 	}
 	
 	

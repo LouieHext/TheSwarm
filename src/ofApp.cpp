@@ -23,6 +23,7 @@ void ofApp::setup() {
 //--------------------------------------------------------------
 void ofApp::update() {
 	
+	updateMap();
 	updateAnts();										//update the ants using the simulation shader
 	updatePheromones();									//update the pheromones using the diffusion shader
 	
@@ -96,9 +97,11 @@ void ofApp::generateMap() {
 			foodCPU[idx] = 0.0;
 			foodCPU[idx + W * H] = 0.0;
 			foodCPU[idx + 2*W * H] = 0.0;
+			foodCPU[idx + 3 * W * H] = 0.0;
 			foodCPUClear[idx] = 0.0;
 			foodCPUClear[idx + W * H] = 0.0;
 			foodCPUClear[idx + 2 * W * H] = 0.0;
+			foodCPUClear[idx + 3 * W * H] = 0.0;
 
 		
 
@@ -159,7 +162,7 @@ void ofApp::setupAnts() {
 void ofApp::setupShaders() {
 
 	//loading in shader files and linking them
-	loader.setupShaderFromFile(GL_COMPUTE_SHADER, "loader.glsl");          //loads in map infomation from webcam
+	loader.setupShaderFromFile(GL_COMPUTE_SHADER, "loaderNew.glsl");          //loads in map infomation from webcam
 	loader.linkProgram();
 	simulation.setupShaderFromFile(GL_COMPUTE_SHADER, "simulation.glsl");  //simulates ant movement
 	simulation.linkProgram(); 
@@ -180,10 +183,10 @@ void ofApp::setupShaders() {
 
 	pheremonesClear.allocate(W*H * sizeof(float), pheremonesCPU, GL_STATIC_DRAW);		//used to clear arrays to default 0.0
 
-	foodBuffer.allocate(W*H * sizeof(float) * 3, foodCPU, GL_STATIC_DRAW);			//stores map infomation in "layers" [food, nests, particle positions]
-	foodBufferBack.allocate(W*H * sizeof(float) * 3, foodCPU, GL_STATIC_DRAW);		//for "instantaneous" global update
-	foodBufferCopy.allocate(W*H * sizeof(float) * 3, foodCPU, GL_STATIC_DRAW);
-	foodBufferClear.allocate(W*H * sizeof(float) * 3, foodCPUClear, GL_STATIC_DRAW);
+	foodBuffer.allocate(W*H * sizeof(float) * 4, foodCPU, GL_STATIC_DRAW);			//stores map infomation in "layers" [food, nests, particle positions]
+	foodBufferBack.allocate(W*H * sizeof(float) * 4, foodCPU, GL_STATIC_DRAW);		//for "instantaneous" global update
+	foodBufferCopy.allocate(W*H * sizeof(float) * 4, foodCPU, GL_STATIC_DRAW);
+	foodBufferClear.allocate(W*H * sizeof(float) * 4, foodCPUClear, GL_STATIC_DRAW);
 	antsBuffer.allocate(ants, GL_DYNAMIC_DRAW);											//buffer of ant structs
 	antsBufferClear.allocate(ants, GL_STATIC_DRAW);										//holds initial ants for easy reset
 
@@ -238,6 +241,35 @@ void ofApp::setupParams() {
 
 }
 
+
+//dispatched the simulation compute shader to update the ants
+void ofApp::updateMap() {
+	loader.begin();												//starting shader
+	
+	loader.setUniform1f("time", ofGetFrameNum()*0.1);			//sending "time"
+	loader.setUniform1i("W", W);								//sending resolution
+	loader.setUniform1i("H", H);
+	
+	int newFoodX = 0;
+	int newFoodY = 0;
+
+	if (ofRandom(0, 1) > 0.99) {
+		newFoodX = int(ofRandom(0.1*W, 0.9*W));
+		newFoodY = int(ofRandom(0.3*H, 0.9*H));
+	}
+	loader.setUniform1i("newFoodX", newFoodX);
+	loader.setUniform1i("newFoodY", newFoodY);
+	loader.setUniform1i("heatX", mouseX);
+	loader.setUniform1i("heatY", mouseY);
+	loader.dispatchCompute(W / 20, H / 20, 1);					//setting 1024 work groups for parallelisation
+	loader.end();												//ending shader
+
+	foodBufferBack.copyTo(foodBuffer);							//completing "instantenous" global updates
+
+}
+
+
+
 //dispatched the simulation compute shader to update the ants
 void ofApp::updateAnts() {
 	simulation.begin();												//starting shader
@@ -248,6 +280,8 @@ void ofApp::updateAnts() {
 	simulation.dispatchCompute(1024, 1, 1);							//setting 1024 work groups for parallelisation
 	simulation.end();												//ending shader
 }
+
+
 
 //dispatched the diffusion compute shader to update the pheromones
 void ofApp::updatePheromones() {
