@@ -34,8 +34,10 @@ layout(local_size_x= 20, local_size_y=20, local_size_z = 1) in;		 //reciving seg
 //loading in infomation and setting globals
 uniform float decayWeight;		//pheromone params
 uniform float diffusionWeight;
+uniform float heatDecayWeight;	
 uniform int W;					//resolution shaders
 uniform int H;
+uniform int frameNum;
 float weights[9] = float[](		//diffusion weights
     1/16.0, 1/8.0, 1/16.0, 
     1/8.0 , 1/4.0, 1/8.0 , 
@@ -65,11 +67,14 @@ vec3 diffuseIDX(int i, int j){
 		}
 	}
 	float valueHeat = 0;										 //storing nest value	
-	c = 0;														 //resetting counter
-	for (int ii=-1;ii<=1;ii++){
-		for(int jj=-1;jj<=1;jj++){							     //kernel loop with gaussian weighted matrix
-			valueHeat+=food[i+ii+(j+jj)*W+3*W*H]*weights[c]; //adding diffused values from surroundings to current location
-			c++;
+	
+	if (frameNum%3==0){
+		c = 0;														 //resetting counter
+		for (int ii=-1;ii<=1;ii++){
+			for(int jj=-1;jj<=1;jj++){							     //kernel loop with gaussian weighted matrix
+				valueHeat+=food[i+ii+(j+jj)*W+3*W*H]*weights[c]; //adding diffused values from surroundings to current location
+				c++;
+			}
 		}
 	}
 	return vec3(valueFood,valueNest,valueHeat);							 //returning values in vec2
@@ -102,10 +107,15 @@ void main(){
 	pheremonesNestBack[idx]*=(1.0-decayWeight*0.5);
 	float valueNest=pheremonesNestBack[idx];
 	
-	foodBack[idx+3*W*H] = origValueHeat * (1.0-diffusionWeight*0.1) + diffusedValueHeat * diffusionWeight*0.42;
-	foodBack[idx+3*W*H]*=(0.4);
-	if (foodBack[idx+3*W*H]>-0.1){
-		foodBack[idx+3*W*H]=0.0;
+	foodBack[idx+3*W*H] = origValueHeat;
+
+	if (frameNum%3==0){
+		foodBack[idx+3*W*H] = origValueHeat * (1.0-diffusionWeight*0.1) + diffusedValueHeat * diffusionWeight*0.44;
+		foodBack[idx+3*W*H]*=(1.0-heatDecayWeight);
+//		foodBack[idx+3*W*H]*=(0.395);
+		if (foodBack[idx+3*W*H]>-0.1){
+			foodBack[idx+3*W*H]=0.0;
+		}
 	}
 	float valueHeat=foodBack[idx+3*W*H];
 	

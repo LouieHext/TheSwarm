@@ -22,8 +22,10 @@ void ofApp::setup() {
 
 //--------------------------------------------------------------
 void ofApp::update() {
-	
-	updateMap();
+
+	if (ofGetFrameNum() % 3 == 0) {
+		updateMap();
+}
 	updateAnts();										//update the ants using the simulation shader
 	updatePheromones();									//update the pheromones using the diffusion shader
 	
@@ -54,9 +56,9 @@ void ofApp::keyPressed(int key){
 		pheremonesClear.copyTo(pheremonesToFoodBack);
 		pheremonesClear.copyTo(pheremonesToNest);
 		pheremonesClear.copyTo(pheremonesToNestBack);
-		//generateMap();									//load up random noise based generation 
-		foodBuffer.allocate(W*H * sizeof(float) * 3, foodCPU, GL_STATIC_DRAW);
+		foodBuffer.allocate(W*H * sizeof(float) * 4, foodCPU, GL_STATIC_DRAW);
 		foodBuffer.bindBase(GL_SHADER_STORAGE_BUFFER, 5);
+		
 		foodBufferClear.copyTo(foodBufferBack);
 		foodBufferClear.copyTo(foodBufferCopy);
 	}
@@ -231,7 +233,7 @@ void ofApp::setupParams() {
 	pheromoneSettings.setName("Pheromone params");							  
 	pheromoneSettings.add(decayWeight.set("decayWeight", 0.18, 0, 1));		  //value at which all pheromones decay
 	pheromoneSettings.add(diffusionWeight.set("diffusionWeight", 0.7, 0, 1)); //value at which all pheromones diffuse
-	
+	pheromoneSettings.add(heatDecayWeight.set("heatDecayWeight", 0.605, 0, 1));	
 	mapSettings.setName("Map params");
 	mapSettings.add(bumpiness.set("bumpiness", 0.001, 0.00001, 0.01));
 	//adding to GUI
@@ -261,6 +263,7 @@ void ofApp::updateMap() {
 	loader.setUniform1i("newFoodY", newFoodY);
 	loader.setUniform1i("heatX", mouseX);
 	loader.setUniform1i("heatY", mouseY);
+	
 	loader.dispatchCompute(W / 20, H / 20, 1);					//setting 1024 work groups for parallelisation
 	loader.end();												//ending shader
 
@@ -290,6 +293,7 @@ void ofApp::updatePheromones() {
 	diffusion.setUniform1f("time", ofGetFrameNum()*0.1);;			//sending "time"
 	diffusion.setUniform1i("W", W);									//sending resolution
 	diffusion.setUniform1i("H", H);
+	diffusion.setUniform1i("frameNum", ofGetFrameNum());
 	diffusion.dispatchCompute(W / 20, H / 20, 1);					//sending workgroups assuming local group size of 20*20
 	diffusion.end();												//ending shader
 

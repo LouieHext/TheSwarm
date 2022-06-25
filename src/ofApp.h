@@ -60,7 +60,7 @@ class ofApp : public ofBaseApp{
 		ofParameter<float> maxSpeed,turningSpeed,steadiness;
 		ofParameter<float> sensorAngle;
 		ofParameter<int> sensorDistance, sensorSize;
-		ofParameter<float> decayWeight, diffusionWeight,foodDesire;
+		ofParameter<float> decayWeight, diffusionWeight,foodDesire, heatDecayWeight;
 		ofParameter<int> densitySpeed;
 		ofParameter<float> baseMulti, densityMulti;
 

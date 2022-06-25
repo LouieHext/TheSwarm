@@ -26,6 +26,7 @@ uniform int newFoodX;
 uniform int newFoodY;
 uniform int heatX;
 uniform int heatY;
+
 uniform sampler2DRect webcamData;
 
  
