@@ -96,6 +96,7 @@ void main(){
 	float diffusedValueFood = diffused.x;						
 	float diffusedValueNest = diffused.y;
 	float diffusedValueHeat = diffused.z;
+	
 
 	//carryig out mixing of original and diffused values for food
 	pheremonesFoodBack[idx] = max(0,origValueFood * (1.0-diffusionWeight*0.1) + diffusedValueFood * diffusionWeight*0.1); //"""""""""this was not used previously!!!!!!!!!!""""""""""
@@ -118,7 +119,7 @@ void main(){
 		}
 	}
 	float valueHeat=foodBack[idx+3*W*H];
-	
+//	float valueHeat=origValueHeat;
 
 	//setting up colours
 	vec4 colFood = vec4(0,valueFood*0.9,valueFood*0.3,0.3);						//food pheromones shown in blue
@@ -152,6 +153,8 @@ void main(){
 	}
 	else{									//if a particle is not here show the combination of pheromones and map details
 		imageStore(pheremoneDisplay,ivec2(gl_GlobalInvocationID.xy),colHeat+colFood+colDetail+colNest);
+//		imageStore(pheremoneDisplay,ivec2(gl_GlobalInvocationID.xy),colHeat);
+
 //		imageStore(pheremoneDisplayAlt,ivec2(gl_GlobalInvocationID.xy),colHeat+colNest+colDetail);
 	}
 	

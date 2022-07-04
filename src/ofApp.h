@@ -2,7 +2,7 @@
 
 #include "ofMain.h"
 #include "ofxGui.h"
-
+#include "ofxKinect.h"
 
 #define W 640*2
 #define H 480*2
@@ -14,12 +14,12 @@ class ofApp : public ofBaseApp{
 		void setup();
 		void update();
 		void draw();
-
+		void exit();
 		//Set up
 		void setupAnts();
 		void setupShaders();
 		void setupParams();
-		
+		void setupKinect();
 		void generateMap();
 
 		//updates
@@ -32,7 +32,7 @@ class ofApp : public ofBaseApp{
 		void keyPressed(int key);
 
 		//shader stuff
-		ofShader simulation,diffusion,loader;
+		ofShader simulation,diffusion,loader,loaderKinect;
 		
 		//GPU storage stuff
 		struct Ant {
@@ -65,6 +65,9 @@ class ofApp : public ofBaseApp{
 		ofParameter<float> baseMulti, densityMulti;
 
 		ofParameter<float> bumpiness;
-		ofParameterGroup antSettings, pheromoneSettings,mapSettings;
+		ofParameter<int> farThreshold, nearThreshold;
+		ofParameterGroup antSettings, pheromoneSettings,mapSettings,kinectSettings;
 
+		int angle;
+		ofxKinect kinect;
 };

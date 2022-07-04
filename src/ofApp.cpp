@@ -17,15 +17,13 @@ void ofApp::setup() {
 	//setupWebcam();										//setting up webcam
 	setupAnts();										//setting up ant structs
 	setupShaders();										//setting up buffers and textures
-	
+	setupKinect();
 }
 
 //--------------------------------------------------------------
 void ofApp::update() {
-
-	if (ofGetFrameNum() % 3 == 0) {
-		updateMap();
-}
+	
+	updateMap();
 	updateAnts();										//update the ants using the simulation shader
 	updatePheromones();									//update the pheromones using the diffusion shader
 	
@@ -42,8 +40,7 @@ void ofApp::draw(){
 	
 	
 	gui.draw();											//drawing GUI
-	
-
+	kinect.drawDepth(ofGetWidth()-400, 10, 400, 300);
 	
 }
 
@@ -56,9 +53,9 @@ void ofApp::keyPressed(int key){
 		pheremonesClear.copyTo(pheremonesToFoodBack);
 		pheremonesClear.copyTo(pheremonesToNest);
 		pheremonesClear.copyTo(pheremonesToNestBack);
-		foodBuffer.allocate(W*H * sizeof(float) * 4, foodCPU, GL_STATIC_DRAW);
+		//generateMap();									//load up random noise based generation 
+		foodBuffer.allocate(W*H * sizeof(float) * 3, foodCPU, GL_STATIC_DRAW);
 		foodBuffer.bindBase(GL_SHADER_STORAGE_BUFFER, 5);
-		
 		foodBufferClear.copyTo(foodBufferBack);
 		foodBufferClear.copyTo(foodBufferCopy);
 	}
@@ -166,6 +163,8 @@ void ofApp::setupShaders() {
 	//loading in shader files and linking them
 	loader.setupShaderFromFile(GL_COMPUTE_SHADER, "loaderNew.glsl");          //loads in map infomation from webcam
 	loader.linkProgram();
+	loaderKinect.setupShaderFromFile(GL_COMPUTE_SHADER, "loaderKinect.glsl");          //loads in map infomation from webcam
+	loaderKinect.linkProgram();
 	simulation.setupShaderFromFile(GL_COMPUTE_SHADER, "simulation.glsl");  //simulates ant movement
 	simulation.linkProgram(); 
 	diffusion.setupShaderFromFile(GL_COMPUTE_SHADER, "Diffusion.glsl");    //diffuses pheromones
@@ -233,21 +232,55 @@ void ofApp::setupParams() {
 	pheromoneSettings.setName("Pheromone params");							  
 	pheromoneSettings.add(decayWeight.set("decayWeight", 0.18, 0, 1));		  //value at which all pheromones decay
 	pheromoneSettings.add(diffusionWeight.set("diffusionWeight", 0.7, 0, 1)); //value at which all pheromones diffuse
-	pheromoneSettings.add(heatDecayWeight.set("heatDecayWeight", 0.605, 0, 1));	
+	pheromoneSettings.add(heatDecayWeight.set("heatDecayWeight", 0.3, 0, 1));
+
 	mapSettings.setName("Map params");
 	mapSettings.add(bumpiness.set("bumpiness", 0.001, 0.00001, 0.01));
+
+	kinectSettings.setName("Kinect params");
+	kinectSettings.add(farThreshold.set("farThreshold", 240, 0, 255));
+	kinectSettings.add(nearThreshold.set("nearThreshold", 255, 0, 255));
 	//adding to GUI
 	gui.add(antSettings);
 	gui.add(pheromoneSettings);
 	gui.add(mapSettings);
+	gui.add(kinectSettings);
 
+}
+
+void ofApp::setupKinect() {
+
+	ofSetLogLevel(OF_LOG_VERBOSE);
+	kinect.setRegistration(true);
+	kinect.init();
+	kinect.open();
+	if (kinect.isConnected()) {
+		ofLogNotice() << "sensor-emitter dist: " << kinect.getSensorEmitterDistance() << "cm";
+		ofLogNotice() << "sensor-camera dist:  " << kinect.getSensorCameraDistance() << "cm";
+		ofLogNotice() << "zero plane pixel size: " << kinect.getZeroPlanePixelSize() << "mm";
+		ofLogNotice() << "zero plane dist: " << kinect.getZeroPlaneDistance() << "mm";
+	}
+	angle = 0;
+	kinect.setCameraTiltAngle(angle);
 }
 
 
 //dispatched the simulation compute shader to update the ants
 void ofApp::updateMap() {
-	loader.begin();												//starting shader
-	
+	kinect.update();
+
+	loaderKinect.begin();												//starting shader
+	loaderKinect.setUniforms(kinectSettings);
+	loaderKinect.setUniform1i("depthW", kinect.getWidth());
+	loaderKinect.setUniform1i("depthH", kinect.getHeight());
+	loaderKinect.setUniformTexture("depthData", kinect.getDepthTexture(), 0);
+	loaderKinect.setUniform1i("W", W);								//sending resolution
+	loaderKinect.setUniform1i("H", H);
+	loaderKinect.dispatchCompute(kinect.getWidth() / 20, kinect.getHeight() / 20, 1);
+	loaderKinect.end();												//starting shader
+
+
+	loader.begin();
 	loader.setUniform1f("time", ofGetFrameNum()*0.1);			//sending "time"
 	loader.setUniform1i("W", W);								//sending resolution
 	loader.setUniform1i("H", H);
@@ -263,7 +296,6 @@ void ofApp::updateMap() {
 	loader.setUniform1i("newFoodY", newFoodY);
 	loader.setUniform1i("heatX", mouseX);
 	loader.setUniform1i("heatY", mouseY);
-	
 	loader.dispatchCompute(W / 20, H / 20, 1);					//setting 1024 work groups for parallelisation
 	loader.end();												//ending shader
 
@@ -293,7 +325,6 @@ void ofApp::updatePheromones() {
 	diffusion.setUniform1f("time", ofGetFrameNum()*0.1);;			//sending "time"
 	diffusion.setUniform1i("W", W);									//sending resolution
 	diffusion.setUniform1i("H", H);
-	diffusion.setUniform1i("frameNum", ofGetFrameNum());
 	diffusion.dispatchCompute(W / 20, H / 20, 1);					//sending workgroups assuming local group size of 20*20
 	diffusion.end();												//ending shader
 
@@ -310,4 +341,11 @@ void ofApp::showFPS() {
 	std::stringstream strm;
 	strm << "fps: " << ofGetFrameRate();							//frame rate to sting stream
 	ofSetWindowTitle(strm.str());
+}
+
+void ofApp::exit() {
+	kinect.setCameraTiltAngle(0); // zero the tilt on exit
+	kinect.close();
+
+
 }
