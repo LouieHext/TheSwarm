@@ -70,4 +70,6 @@ class ofApp : public ofBaseApp{
 
 		int angle;
 		ofxKinect kinect;
+
+		bool showKinect;
 };

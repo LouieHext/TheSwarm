@@ -68,7 +68,7 @@ vec3 diffuseIDX(int i, int j){
 	}
 	float valueHeat = 0;										 //storing nest value	
 	
-	if (frameNum%3==0){
+	if (frameNum%5==0){
 		c = 0;														 //resetting counter
 		for (int ii=-1;ii<=1;ii++){
 			for(int jj=-1;jj<=1;jj++){							     //kernel loop with gaussian weighted matrix
@@ -79,6 +79,11 @@ vec3 diffuseIDX(int i, int j){
 	}
 	return vec3(valueFood,valueNest,valueHeat);							 //returning values in vec2
 }
+
+float rand(vec2 co){
+    return fract(sin(dot(co, vec2(12.9898, 78.233))) * 43758.5453);
+}
+
 
 //===========================================================================
 void main(){
@@ -110,7 +115,7 @@ void main(){
 	
 	foodBack[idx+3*W*H] = origValueHeat;
 
-	if (frameNum%3==0){
+	if (frameNum%5==0){
 		foodBack[idx+3*W*H] = origValueHeat * (1.0-diffusionWeight*0.1) + diffusedValueHeat * diffusionWeight*0.44;
 		foodBack[idx+3*W*H]*=(1.0-heatDecayWeight);
 //		foodBack[idx+3*W*H]*=(0.395);
@@ -128,22 +133,31 @@ void main(){
 	vec4 colDetail;												//colour for showing map infomation
 
 	//conditionals to define colDetail
-	if (food[idx]<-1000){										//if its a wall, display in grey and remove pheromones
-		 colDetail = vec4(0.5,0.5,0.5,1.0);						//grey
+	if (food[idx]<-1000){
+		 float  cent_dist=distance(vec2(gl_GlobalInvocationID.x,gl_GlobalInvocationID.y), vec2(0.5*W,0.5*H));		//if its a wall, display in grey and remove pheromones
+		 cent_dist=pow(cent_dist/W,2)*2;
+		 colDetail = vec4(0.7,0.7,0.7,1.0);
+		 colDetail= colDetail-vec4(vec3(cent_dist),1.0);//grey
 		 pheremonesNestBack[idx] = 0.0;							//removing in back
 		 pheremonesFoodBack[idx] = 0.0;	
 		 pheremonesNest[idx] = 0.0;							
 		 pheremonesFood[idx] = 0.0;
 		 colFood=vec4(0.0,0.0,0.0,1.0);
 		 colNest=vec4(0.0,0.0,0.0,1.0);
+		 colDetail=colDetail+0.15*vec4(vec3(-0.2+rand(vec2(gl_GlobalInvocationID.x,gl_GlobalInvocationID.y)) ),1.0);
+
 	}
-	if (food[idx]>1){											//if food, display in green 
+	else if (food[idx]>1){											//if food, display in green 
 		colDetail = vec4(0,1.0,0,1.0);							//green
 	}
-	if (food[idx+W*H]>0){										//if its a nest (stored in a "deeper" layer, hence the + W*H)
-		colDetail = vec4(1.0,1.0,0.2,1.0);						//display in yellow
-	}
+	if (food[idx+W*H]>0){	
+		float  nest_dist=distance(vec2(gl_GlobalInvocationID.x,gl_GlobalInvocationID.y), vec2(0.5*W,0.05*H));		//if its a wall, display in grey and remove pheromones
+		nest_dist=pow(nest_dist/(W*0.2),2)*1.25;
+		colDetail = vec4(1.0,1.0,0.2,1.0);	
+		colDetail= colDetail-vec4(vec3(nest_dist),1.0);//grey//display in yellow
+		colDetail=colDetail+0.15*vec4(vec3(-0.2+rand(vec2(gl_GlobalInvocationID.x,gl_GlobalInvocationID.y)) ),1.0);
 
+	}
 	
 
 	if (food[idx]>=0 && food[idx+2*W*H]>0){														//if it is a particle show white
@@ -152,6 +166,9 @@ void main(){
 
 	}
 	else{									//if a particle is not here show the combination of pheromones and map details
+		if (valueFood>abs(valueHeat) || valueNest>abs(valueHeat)){
+			colHeat=vec4(0,0,0,1.0);
+	}
 		imageStore(pheremoneDisplay,ivec2(gl_GlobalInvocationID.xy),colHeat+colFood+colDetail+colNest);
 //		imageStore(pheremoneDisplay,ivec2(gl_GlobalInvocationID.xy),colHeat);
 

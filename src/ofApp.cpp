@@ -18,6 +18,7 @@ void ofApp::setup() {
 	setupAnts();										//setting up ant structs
 	setupShaders();										//setting up buffers and textures
 	setupKinect();
+	showKinect = true;
 }
 
 //--------------------------------------------------------------
@@ -40,7 +41,11 @@ void ofApp::draw(){
 	
 	
 	gui.draw();											//drawing GUI
-	kinect.drawDepth(ofGetWidth()-400, 10, 400, 300);
+
+	if (showKinect) {
+		kinect.drawDepth(ofGetWidth() - 400, 10, 400, 300);
+	}
+	
 	
 }
 
@@ -54,7 +59,7 @@ void ofApp::keyPressed(int key){
 		pheremonesClear.copyTo(pheremonesToNest);
 		pheremonesClear.copyTo(pheremonesToNestBack);
 		//generateMap();									//load up random noise based generation 
-		foodBuffer.allocate(W*H * sizeof(float) * 3, foodCPU, GL_STATIC_DRAW);
+		foodBuffer.allocate(W*H * sizeof(float) * 4, foodCPU, GL_STATIC_DRAW);
 		foodBuffer.bindBase(GL_SHADER_STORAGE_BUFFER, 5);
 		foodBufferClear.copyTo(foodBufferBack);
 		foodBufferClear.copyTo(foodBufferCopy);
@@ -63,7 +68,7 @@ void ofApp::keyPressed(int key){
 	if (key == 'g') {									//if generating a new map
 		generateMap();									//load up random noise based generation 
 														//reallocare storage for map infomation
-		foodBuffer.allocate(W*H * sizeof(float) * 3, foodCPU, GL_STATIC_DRAW);
+		foodBuffer.allocate(W*H * sizeof(float) * 4, foodCPU, GL_STATIC_DRAW);
 		foodBuffer.bindBase(GL_SHADER_STORAGE_BUFFER, 5);
 
 		antsBufferClear.copyTo(antsBuffer);				//copy default ant struct ant buffer
@@ -71,6 +76,10 @@ void ofApp::keyPressed(int key){
 		pheremonesClear.copyTo(pheremonesToFoodBack);
 		pheremonesClear.copyTo(pheremonesToNest);
 		pheremonesClear.copyTo(pheremonesToNestBack);
+	}
+
+	if (key == 'k') {
+		showKinect = !showKinect;
 	}
 
 }
@@ -135,11 +144,10 @@ void ofApp::generateMap() {
 //two additional data points are added to help with GPU alignment but arent
 //actually needed.
 void ofApp::setupAnts() {
-	ants.resize(1024 * 32);						//resizing ant vector
-	
-	glm::vec2	nest = glm::vec2(W*0.5, H*0.1);				//default position in lower right
-	
 
+
+	ants.resize(1024 * 16);						//resizing ant vector
+	glm::vec2	nest = glm::vec2(W*0.5, H*0.1);				//default position in lower right
 	for (auto & ant : ants) {						//random position around nest
 		ant.pos = nest + glm::vec2(ofRandom(-5, 5), ofRandom(-5, 5));
 		ant.heading = ofRandom(0, 2 * PI);			//random heading
@@ -232,13 +240,13 @@ void ofApp::setupParams() {
 	pheromoneSettings.setName("Pheromone params");							  
 	pheromoneSettings.add(decayWeight.set("decayWeight", 0.18, 0, 1));		  //value at which all pheromones decay
 	pheromoneSettings.add(diffusionWeight.set("diffusionWeight", 0.7, 0, 1)); //value at which all pheromones diffuse
-	pheromoneSettings.add(heatDecayWeight.set("heatDecayWeight", 0.3, 0, 1));
+	pheromoneSettings.add(heatDecayWeight.set("heatDecayWeight", 0.601, 0, 1));
 
 	mapSettings.setName("Map params");
 	mapSettings.add(bumpiness.set("bumpiness", 0.001, 0.00001, 0.01));
 
 	kinectSettings.setName("Kinect params");
-	kinectSettings.add(farThreshold.set("farThreshold", 240, 0, 255));
+	kinectSettings.add(farThreshold.set("farThreshold", 232, 0, 255));
 	kinectSettings.add(nearThreshold.set("nearThreshold", 255, 0, 255));
 	//adding to GUI
 	gui.add(antSettings);

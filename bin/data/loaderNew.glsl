@@ -46,7 +46,7 @@ void main(){
 
 	if (newFoodX>1 && newFoodY>1){
 		if (length(vec2(i-newFoodX,j-newFoodY))<15){
-			foodBack[idx]=100.0; 
+			foodBack[idx]=50.0; 
 		}
 		if ( i==newFoodX && j==newFoodY){
 			foodBack[idx]=-10; 

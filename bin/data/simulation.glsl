@@ -158,12 +158,12 @@ float updateHeading(Particle particle) {
 	}
 	//if forward best add random
 	//big random
-	else if (rand(vec2(particle.pos.x,time))>0.9-particle.time*0.025)  {
-	  return particle.heading+(1.5+particle.time*0.02)*turningSpeed*(-0.5+rand(vec2(particle.pos.y,time)) );				   //adding large random to heading
+	else if (rand(vec2(particle.pos.x,time))>0.95-particle.time*0.005)  {
+	  return particle.heading+(1.5+particle.time*0.01)*turningSpeed*(-0.5+rand(vec2(particle.pos.y,time)) );				   //adding large random to heading
 	}
 	//small random
 	else {
-		return particle.heading+0.1*turningSpeed*(-0.5+rand(vec2(particle.pos.y,time)) );			  //adding small random to heading
+		return particle.heading+0.8*turningSpeed*(-0.5+rand(vec2(particle.pos.y,time)) );			  //adding small random to heading
 	} 
 }
 
@@ -171,7 +171,7 @@ float updateHeading(Particle particle) {
 //velocity of magnitude "maxSpeed" with direction given by heading
 //effectively a jump of "maxSpeed" in direction heading
 vec2 updatePos(Particle particle) {
-	float speed = maxSpeed;
+	float speed = maxSpeed * (1.0 + 0.2 * rand(vec2(particle.pos.y,time)));
 
 	if (densitySpeed>0){
 		float value = 0;
@@ -203,7 +203,7 @@ bool updateState(Particle particle){
 			for(int ii=-1;ii<=1;ii++){
 				for(int jj=-1;jj<=1;jj++){
 					int idx = int(particle.pos.x)+ii+(int(particle.pos.y)+jj)*W;
-					food[idx] = max(0,food[idx]-5);  //"pickup" the food
+					food[idx] = max(0,food[idx]-10);  //"pickup" the food
 					
 				}
 			}
